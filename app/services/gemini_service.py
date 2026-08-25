@@ -43,7 +43,7 @@ visible symptoms, treatment recommendations, and prevention methods.
         try:
 
             response = client.models.generate_content(
-                model="gemini-3.6-flash",
+                model="gemini-3.5-flash-lite",
                 contents=[
                     types.Part.from_bytes(
                         data=image_data,

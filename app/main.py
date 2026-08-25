@@ -50,7 +50,7 @@ class ChatRequest(BaseModel):
 # =========================================================
 
 app = FastAPI(
-    title="Crop Doctor API",
+    title="LeafLens AI",
     description="AI-powered crop disease detection API",
     version="1.0.0",
 )
@@ -117,7 +117,7 @@ async def chat_assistant(req: ChatRequest):
 
     try:
         response = client.models.generate_content(
-            model="gemini-2.5-flash",
+            model="gemini-3.5-flash-lite",
             contents=[system_instruction, f"User question: {user_query}"]
         )
 
@@ -234,7 +234,7 @@ Do not add any explanation outside the JSON.
     try:
 
         response = client.models.generate_content(
-            model="gemini-2.5-flash",
+            model="gemini-3.5-flash-lite",
 
             contents=[
                 prompt,
