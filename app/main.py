@@ -76,7 +76,7 @@ app.add_middleware(
 @app.get("/")
 def root():
     return {
-        "message": "Crop Doctor API is running"
+        "message": "LeafLens AI API is running"
     }
 
 
