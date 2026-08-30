@@ -13,7 +13,6 @@ client = genai.Client(
     api_key=os.getenv("GEMINI_API_KEY")
 )
 
-# Define Pydantic schema for structured output guarantees
 class LeafAnalysisResult(BaseModel):
     crop: str = Field(description="Name of the crop identified")
     disease: str = Field(description="Identified disease name or 'Healthy'")
@@ -40,19 +39,19 @@ def analyze_image(image_data: bytes, mime_type: str) -> dict:
                 config=types.GenerateContentConfig(
                     response_mime_type="application/json",
                     response_schema=LeafAnalysisResult,
+                    # Disable AFC to mute warning and prevent internal tool execution conflicts
+                    automatic_function_calling=types.AutomaticFunctionCallingConfig(disable=True)
                 ),
             )
 
-            # Access the validated Pydantic object directly via `response.parsed`
-            # and convert back to a dictionary matching your desired schema
-            if response.parsed:
+            # Safely validate and return dictionary
+            if hasattr(response, "parsed") and response.parsed:
                 return response.parsed.model_dump()
             
-            # Fallback parsing if needed
             return LeafAnalysisResult.model_validate_json(response.text).model_dump()
 
         except Exception as e:
             print(f"Gemini attempt {attempt + 1} failed: {e}")
             if attempt == max_attempts - 1:
-                raise
+                raise RuntimeError(f"Analysis failed after max retries: {str(e)}")
             time.sleep(2)
