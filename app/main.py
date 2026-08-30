@@ -23,6 +23,7 @@ if not GEMINI_API_KEY:
 
 client = genai.Client(api_key=GEMINI_API_KEY)
 
+# Use standard production model naming
 MODEL_NAME = "gemini-2.5-flash"
 MAX_HISTORY_LENGTH = 100
 RECENT_DIAGNOSES: List[dict] = []
@@ -131,12 +132,14 @@ async def predict_leaf(file: UploadFile = File(...)):
     )
 
     try:
+        image_part = types.Part.from_bytes(
+            data=image_bytes,
+            mime_type=file.content_type
+        )
+
         response = client.models.generate_content(
             model=MODEL_NAME,
-            contents=[
-                prompt,
-                types.Part.from_bytes(data=image_bytes, mime_type=file.content_type)
-            ],
+            contents=[image_part, prompt],
             config=types.GenerateContentConfig(
                 response_mime_type="application/json",
                 response_schema=DiagnosisResponse
@@ -153,8 +156,8 @@ async def predict_leaf(file: UploadFile = File(...)):
             timestamp=datetime.now().strftime("%Y-%m-%d %H:%M:%S")
         )
 
-        # In-memory storage management with limit cap
-        RECENT_DIAGNOSES.insert(0, diagnosis_record.model_dump())
+        # In-memory storage management with limit cap (json-safe dumping)
+        RECENT_DIAGNOSES.insert(0, diagnosis_record.model_dump(mode="json"))
         if len(RECENT_DIAGNOSES) > MAX_HISTORY_LENGTH:
             RECENT_DIAGNOSES.pop()
 
