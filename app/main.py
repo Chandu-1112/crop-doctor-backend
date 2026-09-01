@@ -1,5 +1,6 @@
 import os
 import uuid
+import traceback
 from datetime import datetime
 from typing import List
 
@@ -23,8 +24,7 @@ if not GEMINI_API_KEY:
 
 client = genai.Client(api_key=GEMINI_API_KEY)
 
-# Use standard production model naming
-MODEL_NAME = "gemini-2.5-flash"
+MODEL_NAME = "gemini-3.6-flash"
 MAX_HISTORY_LENGTH = 100
 RECENT_DIAGNOSES: List[dict] = []
 
@@ -142,12 +142,16 @@ async def predict_leaf(file: UploadFile = File(...)):
             contents=[image_part, prompt],
             config=types.GenerateContentConfig(
                 response_mime_type="application/json",
-                response_schema=DiagnosisResponse
+                response_schema=DiagnosisResponse,
+                automatic_function_calling=types.AutomaticFunctionCallingConfig(disable=True)
             )
         )
 
-        # Parse SDK output into Pydantic model natively
-        parsed_data = DiagnosisResponse.model_validate_json(response.text)
+        # Extract structured Pydantic model natively
+        if hasattr(response, "parsed") and response.parsed:
+            parsed_data = response.parsed
+        else:
+            parsed_data = DiagnosisResponse.model_validate_json(response.text)
         
         # Construct response object with metadata
         diagnosis_record = FullDiagnosisResponse(
@@ -156,7 +160,7 @@ async def predict_leaf(file: UploadFile = File(...)):
             timestamp=datetime.now().strftime("%Y-%m-%d %H:%M:%S")
         )
 
-        # In-memory storage management with limit cap (json-safe dumping)
+        # In-memory storage management
         RECENT_DIAGNOSES.insert(0, diagnosis_record.model_dump(mode="json"))
         if len(RECENT_DIAGNOSES) > MAX_HISTORY_LENGTH:
             RECENT_DIAGNOSES.pop()
@@ -164,4 +168,5 @@ async def predict_leaf(file: UploadFile = File(...)):
         return diagnosis_record
 
     except Exception as e:
+        traceback.print_exc()
         raise HTTPException(status_code=500, detail=f"Analysis failed: {str(e)}")
